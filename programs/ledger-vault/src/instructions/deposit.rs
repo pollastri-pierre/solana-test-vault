@@ -15,6 +15,7 @@ pub struct Deposit<'info> {
     )]
     pub user_ata: Account<'info, TokenAccount>,
     #[account(
+        mut,
         seeds = [b"vault", user.key().as_ref(), mint.key().as_ref()],
         bump = vault_state.vault_bump,
     )]
@@ -39,7 +40,7 @@ impl<'info> Deposit<'info> {
         };
 
         let cpi_context = CpiContext::new(cpi_program, cpi_accounts);
-
+        self.vault_state.deposit_counter += 1;
         transfer(cpi_context, amount)?;
 
         Ok(())

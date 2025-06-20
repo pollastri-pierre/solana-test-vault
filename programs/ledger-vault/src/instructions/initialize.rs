@@ -31,7 +31,7 @@ pub struct Initialize<'info> {
 impl<'info> Initialize<'info> {
     pub fn initialize(&mut self, bumps: InitializeBumps) -> Result<()> {
 
-        self.vault_state.set_inner(Vault { vault_bump:bumps.vault_state });
+        self.vault_state.set_inner(Vault { vault_bump:bumps.vault_state, deposit_counter: 0 });
         
         Ok(())
     }
