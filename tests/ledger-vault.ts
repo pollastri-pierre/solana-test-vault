@@ -10,6 +10,7 @@ import {
 import NodeWallet from "@coral-xyz/anchor/dist/cjs/nodewallet";
 import { LedgerVault } from "../target/types/ledger_vault";
 import { SYSTEM_PROGRAM_ID } from "@coral-xyz/anchor/dist/cjs/native/system";
+import { assert } from "chai";
 
 describe("ledger-vault", () => {
   // Configure the client to use the local cluster.
@@ -108,4 +109,49 @@ describe("ledger-vault", () => {
     let finalBalance = await provider.connection.getTokenAccountBalance(vault);
     console.log("\nVault balance after deposit:", finalBalance.value.amount);
   });
+
+  it("Withdraw all tokens and close vault", async () => {
+    let initialBalance = await provider.connection.getTokenAccountBalance(vault);
+    console.log("\nVault balance before withdrawal:", initialBalance.value.amount);
+
+    let userBalanceBefore = await provider.connection.getTokenAccountBalance(userATA);
+    console.log("User ATA balance before withdrawal:", userBalanceBefore.value.amount);
+
+    const tx = await program.methods.withdraw()
+      .accountsPartial({
+        user: provider.publicKey,
+        mint,
+        userAta: userATA,
+        vaultState,
+        vault,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .rpc();
+    
+    console.log("\nWithdrawal and close transaction signature", tx);
+
+    // Verify vault token account is closed
+    try {
+      await provider.connection.getTokenAccountBalance(vault);
+      assert.fail("Vault token account should be closed");
+    } catch (error) {
+      console.log("✓ Vault token account successfully closed");
+    }
+
+    // Verify PDA is closed
+    try {
+      await program.account.vault.fetch(vaultState);
+      assert.fail("Vault state PDA should be closed");
+    } catch (error) {
+      console.log("✓ Vault state PDA successfully closed");
+    }
+
+    // Verify user received all tokens
+    let userBalanceAfter = await provider.connection.getTokenAccountBalance(userATA);
+    console.log("User ATA balance after withdrawal:", userBalanceAfter.value.amount);
+    
+    const expectedBalance = parseInt(userBalanceBefore.value.amount) + parseInt(initialBalance.value.amount);
+    assert.equal(userBalanceAfter.value.amount, expectedBalance.toString());
+  });
+
 });
